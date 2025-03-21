@@ -19,6 +19,16 @@ BOOTS_CONFIDENCE = 0.6
 
 # Доп. функции, которые используются дальше при решении конкретных задач:
 def get_box_corners_coords(xywh_coords):
+    """
+    The function returns the coordinates of the corners of the bounding box.
+
+    Args:
+        xywh_coords (list): Bounding box coordinates in xywh format.
+
+    Returns:
+        corners_coords (list): The coordinates of the corners of the bounding box. It is a list of tuples.
+                               Each tuple has 2 elements - the x coordinate and the y coordinate of the corner.
+    """
     corners_coords = []
     corners_coords.append((xywh_coords[0] - xywh_coords[2] / 2,
                            xywh_coords[1] - xywh_coords[3] / 2))
@@ -32,6 +42,15 @@ def get_box_corners_coords(xywh_coords):
 
 
 def xywh_to_xyxy(xywh_coords):
+    """
+    The function converts the coordinates of the bounding box from xywh format to xyxy format.
+
+    Args:
+        xywh_coords (list): List of coordinates in xywh format.
+
+    Returns:
+        xyxy_coords (list): List of coordinates in xyxy format.
+    """
     xyxy_coords = [
         int(xywh_coords[0] - xywh_coords[2] / 2),
         int(xywh_coords[1] - xywh_coords[3] / 2),
@@ -42,6 +61,17 @@ def xywh_to_xyxy(xywh_coords):
 
 
 def intersection(clear_zone, xyxy_coords):
+    """
+    The function calculates the area of ​​intersection of the clean zone mask
+    and the bounding box specified by xyxy_coords.
+
+    Args:
+        clear_zone (np.ndarray): Clean zone mask.
+        xyxy_coords (list): List of coordinates in xyxy format.
+
+    Returns:
+        area_of_intersection (float): Intersection area.
+    """
     area_of_intersection = 0
     for i in range(xyxy_coords[0], xyxy_coords[2]):
         for j in range(xyxy_coords[1], xyxy_coords[3]):
@@ -51,18 +81,53 @@ def intersection(clear_zone, xyxy_coords):
 
 
 def union(area_of_clear_zone, xyxy_coords, area_of_intersection):
+    """
+    The function calculates the union of the clean area mask and the bounding box specified by xyxy_coords.
+
+    Args:
+        area_of_clear_zone (float): Clean zone mask area.
+        xyxy_coords (list): List of coordinates in xyxy format.
+        area_of_intersection (float): The area of ​​intersection of the clear zone mask and the bounding box.
+
+    Returns:
+        area_of_union (float): Union area.
+    """
     area_of_box = (int(abs(xyxy_coords[2] - xyxy_coords[0])) * int(abs(xyxy_coords[3] - xyxy_coords[1])))
     area_of_union = area_of_clear_zone + area_of_box - area_of_intersection
     return area_of_union
 
 
 def IoU(clear_zone, area_of_clear_zone, xyxy_coords):
+    """
+    The function calculates the intersection over union for the clean area mask
+    and the bounding box specified by xyxy_coords.
+
+    Args:
+        clear_zone (np.ndarray): Clean zone mask.
+        area_of_clear_zone (float): Clean Zone Mask Area.
+        xyxy_coords (list): List of coordinates in xyxy format.
+
+    Returns:
+        intersection_over_union (float): Intersection over Union, aka IoU.
+    """
     area_of_intersection = intersection(clear_zone, xyxy_coords)
     area_of_union = union(area_of_clear_zone, xyxy_coords, area_of_intersection)
-    return area_of_intersection / area_of_union
+    intersection_over_union = area_of_intersection / area_of_union
+    return intersection_over_union
 
 
 def box_drawing(image, xyxy_coords, cls):
+    """
+    The function draws a bounding box over the image.
+
+    Args:
+        image (np.ndarray): Original image.
+        xyxy_coords (list): Bounding box coordinates in xyxy format.
+        cls (int): Class number (0 - dirty boots, 1 - green boots).
+
+    Returns:
+        image (np.ndarray): An image with a bounding box drawn.
+    """
     color = (0, 0, 255) if cls == 0 else (0, 255, 0)
     image = cv2.rectangle(image, (int(xyxy_coords[0]), int(xyxy_coords[1])),
                           (int(xyxy_coords[2]), int(xyxy_coords[3])), color, thickness=BOX_THICKNESS)
@@ -70,6 +135,16 @@ def box_drawing(image, xyxy_coords, cls):
 
 
 def text_drawing(image, text):
+    """
+    The function writes text over the image.
+
+    Args:
+        image (np.ndarray): Original image.
+        text (str): Text to be drawn over the image.
+
+    Returns:
+        image (np.ndarray): An image with a text drawn.
+    """
     color = (0, 0, 255) if text == 'ALARM' else (0, 255, 0)
     image = cv2.putText(image, text, TEXT_COORDS, cv2.FONT_HERSHEY_SIMPLEX,
                         fontScale=TEXT_SCALE, color=color, thickness=TEXT_THICKNESS)
@@ -77,6 +152,15 @@ def text_drawing(image, text):
 
 
 def show_image(image):
+    """
+    The function renders the image and shows it to the user.
+
+    Args:
+        image (np.ndarray): The image to be shown.
+
+    Returns:
+        None.
+    """
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     plt.figure(figsize=IMAGE_FIGSIZE)
     plt.imshow(image)
@@ -89,6 +173,20 @@ def show_image(image):
 # Вам важно найти местоположение пяток человека в пространстве для контроля пребывания их в чистой или грязной
 # зоне (как правило это последние по индексу keypoints в result-е инференса модели).
 def get_heels(model, confidence, image_path):
+    """
+    The function returns the coordinates of the predicted heels of people in the image,
+    as well as the image itself with the skeletons and bounding boxes of people drawn on it.
+
+    Args:
+        model (YOLO): Ultralytics YOLO-model.
+        confidence (float): The confidence value below which predictions are discarded.
+        image_path (str): Path to the image where objects are detected.
+
+    Returns:
+        all_heels (list): A list containing the coordinates of the heels. The coordinates are represented as tuples.
+                          Each heel corresponds to a tuple of two elements (the x and y coordinates, respectively).
+        annotated_img (np.ndarray): An image with bounding boxes and skeletons drawn on it.
+    """
     pose_result = model(image_path, conf=confidence, verbose=False)[0]
     all_heels = []
     for keypoints in pose_result.keypoints.xy:
@@ -102,6 +200,21 @@ def get_heels(model, confidence, image_path):
 # Нахождение и детекция обуви. Необходимо распознать на картинке два класса, грязную (dirt boot) и чистую обувь
 # (green boot). Для облегчения выполнения задачи модель детекции обуви уже дана (на базе YOLOv12-S).
 def get_boots(model, confidence, image_path):
+    """
+    The function returns the predicted bounding boxes and classes of the boots in the image.
+
+    Args:
+        model (YOLO): Ultralytics YOLO-model.
+        confidence (float): The confidence value below which predictions are discarded.
+        image_path (str): Path to the image where objects are detected.
+
+    Returns:
+        boots_list (list): A list containing classes and coordinates of the bounding boxes of the boots. Each element
+                           of the list is a tuple, the first element of which is the predicted
+                           class (0 - dirty boots, 1 - green boots), the second element of which is a
+                           list of coordinates of the bounding
+                           box (the list contains 4 float numbers - coordinates in xywh format).
+    """
     boots_result = model(image_path, conf=confidence, verbose=False)[0]
     boots_list = []
     for box in boots_result.boxes:
@@ -113,6 +226,28 @@ def get_boots(model, confidence, image_path):
 # Напишите решение, которое способно определить, находится ли dirt boot или green boot в области ROI,
 # центром которой является пятка скелета. Размеры 'ROI' определите как полигон (набор связанных точек).
 def get_heels_boots_match(heels, boots, heel_ROI_coords):
+    """
+    The function returns a list of heels and their corresponding boots.
+
+    Args:
+        heels (list): A list containing the coordinates of the heels. The coordinates are represented as tuples.
+                      Each heel corresponds to a tuple of two elements (the x and y coordinates, respectively).
+        boots (list): A list containing classes and coordinates of the bounding boxes of the boots. Each element
+                      of the list is a tuple, the first element of which is the predicted
+                      class (0 - dirty boots, 1 - green boots), the second element of which is a
+                      list of coordinates of the bounding
+                      box (the list contains 4 float numbers - coordinates in xywh format).
+        heel_ROI_coords (list): A list of polygon coordinates representing the ROIs corresponding to the heels.
+                                Each element of the list is a tuple consisting of two float elements
+                                (the x and y coordinates of the polygon point).
+
+    Returns:
+        heels_boots_list (list): The list of heels and their corresponding boots. Each element is a list, the first
+                                 element of which is a tuple containing the x and y coordinates of the current heel,
+                                 and all subsequent elements are tuples from the boots list (the first element is the
+                                 boot class, the second is a list of bounding box coordinates) corresponding to the
+                                 current heel.
+    """
     heels_boots_list = []
     for heel in heels:
         heel_x, heel_y = float(heel[0]), float(heel[1])
@@ -138,9 +273,24 @@ def get_heels_boots_match(heels, boots, heel_ROI_coords):
 #   и без человека - не нарушение.
 def get_status(heels_boots_list, clear_zone, area_of_clear_zone, image, iou=0.001):
     """
-    Функция может вернуть одно из трёх значений: ALARM (первый пункт), GOOD (второй пункт)
-    и пустую строку (все остальные случаи). Помимо этого возвращает изображение с
-    нарисованными поверх него ограничивающими рамками и текстом.
+    The function can return one of three values: ALARM, GOOD, and an empty string (all other cases).
+    In addition, it returns an image with bounding boxes and text drawn over it.
+
+    Args:
+        heels_boots_list (list): The list of heels and their corresponding boots. Each element is a list, the first
+                                 element of which is a tuple containing the x and y coordinates of the current heel,
+                                 and all subsequent elements are tuples from the boots list (the first element is the
+                                 boot class, the second is a list of bounding box coordinates) corresponding to the
+                                 current heel.
+        clear_zone (np.ndarray): Clean zone mask.
+        area_of_clear_zone (float): Clean Zone Mask Area.
+        image (np.ndarray): Original image.
+        iou (float): The intersection over union value above which the boot is considered to be in the clear zone.
+
+    Returns:
+        current_status (str): A message indicating whether the employee is in a clean area and, if so,
+                              whether their boots are dirty or clean.
+        image (np.ndarray): Image with bounding boxes drawn and current_status text.
     """
     current_status = ''
     for heel_boots in heels_boots_list:
@@ -163,6 +313,17 @@ def get_status(heels_boots_list, clear_zone, area_of_clear_zone, image, iou=0.00
 
 # Все задачи вместе:
 def main():
+    """
+    Main program: For each image in the test_data folder, sequentially predicts the locations of people and their
+    keypoints, detects boots in the image, determines which boots are in the ROI of each heel of each person,
+    and determines whether the person is in a clean zone, and if so, whether they are wearing clean or dirty boots.
+
+    Args:
+        None.
+        
+    Returns:
+        None.
+    """
     filenames = os.listdir('test_data')
     pose_model = YOLO('yolo11s-pose.pt')
     boots_model = YOLO('yolo12s-boots.pt')
