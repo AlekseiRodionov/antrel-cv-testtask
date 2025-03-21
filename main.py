@@ -307,7 +307,7 @@ def get_status(heels_boots_list, clear_zone, area_of_clear_zone, image, iou=0.00
                     elif boot_class:
                         current_status = 'GOOD' if current_status != 'ALARM' else current_status
                     image = box_drawing(image, xyxy_boot_coords, boot_class)
-                    image = text_drawing(image, current_status)
+    image = text_drawing(image, current_status)
     return current_status, image
 
 
@@ -320,7 +320,7 @@ def main():
 
     Args:
         None.
-        
+
     Returns:
         None.
     """
