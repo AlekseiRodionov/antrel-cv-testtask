@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
-from shapely.geometry import Polygon
 
 # Константы:
 BOX_THICKNESS = 3
@@ -114,6 +113,57 @@ def IoU(clear_zone, area_of_clear_zone, xyxy_coords):
     area_of_union = union(area_of_clear_zone, xyxy_coords, area_of_intersection)
     intersection_over_union = area_of_intersection / area_of_union
     return intersection_over_union
+
+
+def is_point_in_polygon(point, polygon_coords):
+    """
+    The function calculates whether the specified point is inside the polygon.
+
+    Args:
+        point (tuple): Coordinates of the point being checked. It is a tuple of two float values ​​- x and y
+                       coordinates of the point.
+        polygon_coords (list): List of coordinates of polygon points. It is a list with tuples.
+                               Each tuple consists of two float elements - x and y coordinates of the point.
+
+    Returns:
+        is_inside (bool): A flag indicating whether a point is inside a polygon.
+    """
+    x, y = point
+    num_of_intersections = 0
+    is_inside = False
+    for i in range(1, len(polygon_coords)):
+        x1, y1 = polygon_coords[i-1]
+        x2, y2 = polygon_coords[i]
+        if min(y1, y2) <= y <= max(y1, y2):
+            if x <= max(x1, x2):
+                num_of_intersections += 1
+                # Я не стал писать проверку для граничных случаев, когда y == y1 или y == y2.
+                # На мой взгляд, в данной задаче это не имеет особого смысла. Но комментарием
+                # этот момент на всякий случай пометил.
+    if num_of_intersections % 2:
+        is_inside = True
+    return is_inside
+
+
+def is_box_in_polygon(box_coords, polygon_coords):
+    """
+    The function calculates whether the bounding box is inside the polygon with the specified coordinates.
+
+    Args:
+        box_coords (list): A list of bounding box coordinates. Each element of the list is a tuple of two elements
+                           (the x and y coordinates of a corner point of the bounding box).
+        polygon_coords (list): List of coordinates of polygon points. It is a list with tuples.
+                               Each tuple consists of two float elements - x and y coordinates of the point.
+
+    Returns:
+        is_inside (bool): A flag indicating whether a bounding box is inside a polygon.
+    """
+    is_inside = True
+    for point in box_coords:
+        if not is_point_in_polygon(point, polygon_coords):
+            is_inside = False
+            return is_inside
+    return is_inside
 
 
 def box_drawing(image, xyxy_coords, cls):
@@ -254,10 +304,8 @@ def get_heels_boots_match(heels, boots, heel_ROI_coords):
         heel_boots_list = [(heel_x, heel_y)]
         current_ROI_coords = [(heel_x + coord[0], heel_y + coord[1]) for coord in heel_ROI_coords]
         for boot in boots:
-            ROI_polygon = Polygon(current_ROI_coords)
             boot_coords = get_box_corners_coords(boot[1])
-            boot_polygon = Polygon(boot_coords)
-            if ROI_polygon.contains(boot_polygon):
+            if is_box_in_polygon(boot_coords, current_ROI_coords):
                 heel_boots_list.append(boot)
         heels_boots_list.append(heel_boots_list)
     return heels_boots_list
@@ -342,7 +390,7 @@ def main():
                                                                                 (ROI_SIZE, ROI_SIZE),
                                                                                 (ROI_SIZE, -ROI_SIZE)])
         result, annotated_image = get_status(heels_boots_list, clear_zone, area_of_clear_zone, annotated_image)
-        #show_image(annotated_image) В docker'е всегда проблемно работать с GUI и его элементами, поэтому проще отключить.
+        # show_image(annotated_image) #В docker'е всегда проблемно работать с GUI и его элементами, поэтому проще отключить.
         print(f'{filename} - {result}')
 
 
