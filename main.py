@@ -136,10 +136,14 @@ def is_point_in_polygon(point, polygon_coords):
         x2, y2 = polygon_coords[i]
         if min(y1, y2) <= y <= max(y1, y2):
             if x <= max(x1, x2):
-                num_of_intersections += 1
                 # Я не стал писать проверку для граничных случаев, когда y == y1 или y == y2.
-                # На мой взгляд, в данной задаче это не имеет особого смысла. Но комментарием
-                # этот момент на всякий случай пометил.
+                # Исходя из того, как я понимаю решаемую задачу, в этом нет особого смысла.
+                # Но если всё же нужно, то можно добавить:
+                # if (y == y1) or (y == y2):
+                #     if y > min(y1, y2):
+                #         num_of_intersection += 1
+                # else:
+                num_of_intersections += 1
     if num_of_intersections % 2:
         is_inside = True
     return is_inside
